@@ -1,0 +1,30 @@
+
+name: Delete a post
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'The slug of the post to delete'
+        required: true
+
+jobs:
+  delete_post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Delete post
+        run: |
+          go run main.go delete --slug "${{ github.event.inputs.slug }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add content/posts/*
+          git commit -m "Delete post: ${{ github.event.inputs.slug }}"
+          git push

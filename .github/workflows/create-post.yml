@@ -1,0 +1,42 @@
+name: Create a new post
+
+on: 
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'The title of the post'
+        required: true
+      content:
+        description: 'The content of the post in Markdown'
+        required: true
+      tags:
+        description: 'Comma-separated tags'
+        required: false
+      date:
+        description: 'The date of the post in YYYY-MM-DD format'
+        required: false
+
+jobs:
+  create_post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create post
+        run: |
+          go run main.go create \
+            --title "${{ github.event.inputs.title }}" \
+            --content "${{ github.event.inputs.content }}" \
+            --tags "${{ github.event.inputs.tags }}" \
+            --date "${{ github.event.inputs.date }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add content/posts/*
+          git commit -m "Create new post: ${{ github.event.inputs.title }}"
+          git push
