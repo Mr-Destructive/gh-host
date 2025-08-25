@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -17,6 +19,9 @@ jobs:
         run: |
           go run ssg/main.go
           cp -r static output/
+
+      - name: List output directory
+        run: ls -R output
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
