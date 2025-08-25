@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -172,7 +176,127 @@ tags: [%s]
 		},
 	}
 
+	},
+		},
+		{
+			Name:  "serve",
+			Usage: "Start the HTTP server to dispatch workflows",
+			Action: func(c *cli.Context) error {
+				http.HandleFunc("/dispatch-workflow", dispatchWorkflowHandler)
+				port := os.Getenv("PORT")
+				if port == "" {
+					port = "8080"
+				}
+				log.Printf("Server listening on :%s", port)
+				return http.ListenAndServe(":"+port, nil)
+			},
+		},
+	}
+
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func dispatchWorkflowHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Read the request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
+	}
+
+	var data struct {
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		Tags     string `json:"tags"`
+		Slug     string `json:"slug"`
+		Workflow string `json:"workflow"`
+		Secret   string `json:"secret"`
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Validate secret
+	expectedSecret := os.Getenv("GH_HOST_SECRET")
+	if expectedSecret == "" {
+		log.Println("GH_HOST_SECRET environment variable not set.")
+		http.Error(w, "Server configuration error: GH_HOST_SECRET not set", http.StatusInternalServerError)
+		return
+	}
+	if data.Secret != expectedSecret {
+		http.Error(w, "Invalid secret", http.StatusUnauthorized)
+		return
+	}
+
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	if githubToken == "" {
+		log.Println("GITHUB_TOKEN environment variable not set.")
+		http.Error(w, "Server configuration error: GITHUB_TOKEN not set", http.StatusInternalServerError)
+		return
+	}
+
+	repo := os.Getenv("GITHUB_REPOSITORY") // e.g., "owner/repo"
+	if repo == "" {
+		log.Println("GITHUB_REPOSITORY environment variable not set.")
+		http.Error(w, "Server configuration error: GITHUB_REPOSITORY not set", http.StatusInternalServerError)
+		return
+	}
+
+	owner := strings.Split(repo, "/")[0]
+	repoName := strings.Split(repo, "/")[1]
+
+	eventType := strings.TrimSuffix(data.Workflow, ".yml") // e.g., "create-post"
+
+	clientPayload := map[string]string{
+		"title":   data.Title,
+		"content": data.Content,
+		"tags":    data.Tags,
+		"slug":    data.Slug,
+		"secret":  data.Secret, // Pass secret for workflow validation if needed
+	}
+
+	payloadBytes, err := json.Marshal(clientPayload)
+	if err != nil {
+		http.Error(w, "Error marshalling client payload", http.StatusInternalServerError)
+		return
+	}
+
+	githubAPIURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/dispatches", owner, repoName)
+	req, err := http.NewRequest("POST", githubAPIURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		http.Error(w, "Error creating GitHub API request", http.StatusInternalServerError)
+		return
+	}
+
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("Authorization", "Bearer "+githubToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Error sending request to GitHub API", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("GitHub API error: %d - %s", resp.StatusCode, string(respBody))
+		http.Error(w, fmt.Sprintf("Failed to dispatch workflow: %s", string(respBody)), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Workflow triggered successfully!"))
 }

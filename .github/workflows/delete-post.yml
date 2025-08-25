@@ -7,9 +7,31 @@ on:
       slug:
         description: 'The slug of the post to delete'
         required: true
+      GH_HOST_SECRET:
+        description: 'The shared secret to authorize the action (GH_HOST_SECRET)'
+        required: true
+      AUTHOR_PASSWORD:
+        description: 'Author password for additional verification'
+        required: true
 
 jobs:
+  verify_secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate GH_HOST_SECRET
+        if: "${{ secrets.GH_HOST_SECRET != github.event.inputs.GH_HOST_SECRET }}"
+        run: |
+          echo "Error: Invalid GH_HOST_SECRET"
+          exit 1
+      
+      - name: Validate AUTHOR_PASSWORD
+        if: "${{ secrets.AUTHOR_PASSWORD != github.event.inputs.AUTHOR_PASSWORD }}"
+        run: |
+          echo "Error: Invalid AUTHOR_PASSWORD"
+          exit 1
+
   delete_post:
+    needs: verify_secrets
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
