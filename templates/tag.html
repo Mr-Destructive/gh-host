@@ -1,0 +1,12 @@
+
+{{define "content"}}
+    <h2>Posts tagged with #{{.Tag}}</h2>
+    <ul>
+        {{range .Posts}}
+        <li>
+            <a href="/{{.Slug}}.html">{{.Title}}</a>
+            <span>{{.Date}}</span>
+        </li>
+        {{end}}
+    </ul>
+{{end}}

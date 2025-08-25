@@ -1,0 +1,12 @@
+
+{{define "content"}}
+    <h2>Posts</h2>
+    <ul>
+        {{range .}}
+        <li>
+            <a href="/{{.Slug}}.html">{{.Title}}</a>
+            <span>{{.Date}}</span>
+        </li>
+        {{end}}
+    </ul>
+{{end}}

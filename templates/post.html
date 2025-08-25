@@ -1,0 +1,16 @@
+
+{{define "content"}}
+    <article>
+        <h2>{{.Title}}</h2>
+        <p>{{.Date}}</p>
+        <div>
+            {{range .Tags}}
+            <a href="/tag-{{.}}.html">#{{.}}</a>
+            {{end}}
+        </div>
+        <hr>
+        <div>
+            {{.Content}}
+        </div>
+    </article>
+{{end}}
