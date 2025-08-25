@@ -4,7 +4,7 @@
     <ul>
         {{range .Posts}}
         <li>
-            <a href="/{{.Slug}}.html">{{.Title}}</a>
+            <a href="{{.BaseURL}}/{{.Slug}}.html">{{.Title}}</a>
             <span>{{.Date}}</span>
         </li>
         {{end}}

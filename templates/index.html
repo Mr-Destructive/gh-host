@@ -2,10 +2,12 @@
 {{define "content"}}
     <h2>Posts</h2>
     <ul>
-        {{range .}}
+        {{range .Posts}}
         <li>
-            <a href="/{{.Slug}}.html">{{.Title}}</a>
+            <a href="{{.BaseURL}}/{{.Slug}}.html">{{.Title}}</a>
             <span>{{.Date}}</span>
+            <a href="https://github.com/{{.BaseURL}}/actions/workflows/update-post.yml?ref=main&inputs.slug={{.Slug}}" target="_blank">Edit</a>
+            <a href="https://github.com/{{.BaseURL}}/actions/workflows/delete-post.yml?ref=main&inputs.slug={{.Slug}}" target="_blank" onclick="return confirm('Are you sure you want to delete this post?')">Delete</a>
         </li>
         {{end}}
     </ul>

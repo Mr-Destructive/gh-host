@@ -16,6 +16,8 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build
+        env:
+          BASE_URL: ${{ github.repository }}
         run: |
           go run ssg/main.go
           cp -r static output/

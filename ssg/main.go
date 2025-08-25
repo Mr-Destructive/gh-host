@@ -20,9 +20,12 @@ type Post struct {
 	Tags    []string `yaml:"tags"`
 	Content string
 	Slug    string
+	BaseURL string
 }
 
 func main() {
+	baseURL := os.Getenv("BASE_URL")
+
 	// Create output directory
 	if err := os.MkdirAll("output", 0755); err != nil {
 		log.Fatal(err)
@@ -34,30 +37,30 @@ func main() {
 	}
 
 	// Read all posts
-	posts, err := readPosts("content/posts")
+	posts, err := readPosts("content/posts", baseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Generate individual post pages
-	if err := generatePosts(posts); err != nil {
+	if err := generatePosts(posts, baseURL); err != nil {
 		log.Fatal(err)
 	}
 
 	// Generate index page
-	if err := generateIndex(posts); err != nil {
+	if err := generateIndex(posts, baseURL); err != nil {
 		log.Fatal(err)
 	}
 
 	// Generate tag pages
-	if err := generateTags(posts); err != nil {
+	if err := generateTags(posts, baseURL); err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Site generated successfully!")
 }
 
-func readPosts(dir string) ([]Post, error) {
+func readPosts(dir string, baseURL string) ([]Post, error) {
 	var posts []Post
 
 	files, err := os.ReadDir(dir)
@@ -67,7 +70,7 @@ func readPosts(dir string) ([]Post, error) {
 
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".md") {
-			post, err := readPost(fmt.Sprintf("%s/%s", dir, file.Name()))
+			post, err := readPost(fmt.Sprintf("%s/%s", dir, file.Name()), baseURL)
 			if err != nil {
 				return nil, err
 			}
@@ -78,7 +81,7 @@ func readPosts(dir string) ([]Post, error) {
 	return posts, nil
 }
 
-func readPost(fileName string) (Post, error) {
+func readPost(fileName string, baseURL string) (Post, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return Post{}, err
@@ -121,11 +124,12 @@ func readPost(fileName string) (Post, error) {
 	post.Content = string(markdown.ToHTML([]byte(strings.Join(content, "\n")), nil, nil))
 	post.Slug = strings.TrimSuffix(fileName, ".md")
 	post.Slug = strings.TrimPrefix(post.Slug, "content/posts/")
+	post.BaseURL = baseURL
 
 	return post, nil
 }
 
-func generatePosts(posts []Post) error {
+func generatePosts(posts []Post, baseURL string) error {
 	tmpl, err := template.ParseFiles("templates/layout.html", "templates/post.html")
 	if err != nil {
 		return err
@@ -147,7 +151,7 @@ func generatePosts(posts []Post) error {
 	return nil
 }
 
-func generateIndex(posts []Post) error {
+func generateIndex(posts []Post, baseURL string) error {
 	tmpl, err := template.ParseFiles("templates/layout.html", "templates/index.html")
 	if err != nil {
 		return err
@@ -159,7 +163,15 @@ func generateIndex(posts []Post) error {
 	}
 	defer file.Close()
 
-	err = tmpl.Execute(file, posts)
+	data := struct {
+		Posts   []Post
+		BaseURL string
+	}{
+		Posts:   posts,
+		BaseURL: baseURL,
+	}
+
+	err = tmpl.Execute(file, data)
 	if err != nil {
 		return err
 	}
@@ -167,7 +179,7 @@ func generateIndex(posts []Post) error {
 	return nil
 }
 
-func generateTags(posts []Post) error {
+func generateTags(posts []Post, baseURL string) error {
 	tmpl, err := template.ParseFiles("templates/layout.html", "templates/tag.html")
 	if err != nil {
 		return err
@@ -187,13 +199,17 @@ func generateTags(posts []Post) error {
 		}
 		defer file.Close()
 
-		err = tmpl.Execute(file, struct {
-			Tag   string
-			Posts []Post
+		data := struct {
+			Tag     string
+			Posts   []Post
+			BaseURL string
 		}{
-			Tag:   tag,
-			Posts: posts,
-		})
+			Tag:     tag,
+			Posts:   posts,
+			BaseURL: baseURL,
+		}
+
+		err = tmpl.Execute(file, data)
 		if err != nil {
 			return err
 		}

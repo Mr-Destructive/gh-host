@@ -5,7 +5,7 @@
         <p>{{.Date}}</p>
         <div>
             {{range .Tags}}
-            <a href="/tag-{{.}}.html">#{{.}}</a>
+            <a href="{{.BaseURL}}/tag-{{.}}.html">#{{.}}</a>
             {{end}}
         </div>
         <hr>
