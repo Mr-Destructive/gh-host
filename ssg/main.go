@@ -28,6 +28,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Create content directory if it doesn't exist
+	if err := os.MkdirAll("content/posts", 0755); err != nil {
+		log.Fatal(err)
+	}
+
 	// Read all posts
 	posts, err := readPosts("content/posts")
 	if err != nil {
